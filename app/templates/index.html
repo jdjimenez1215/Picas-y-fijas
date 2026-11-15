@@ -37,6 +37,7 @@
       <button>Entrar</button>
     </form>
     <p id="session"></p>
+    <button id="logout" type="button" class="secondary" hidden>Cerrar sesión</button>
   </section>
   <section id="games" hidden>
     <div id="lobby">
@@ -215,8 +216,23 @@
     token = session.token; username = name;
     el("session").textContent = "Jugando como " + username;
     el("login").hidden = true;
+    el("logout").hidden = false;
     el("games").hidden = false;
     await lobby();
+  });
+  action("logout", "click", () => {
+    token = ""; username = ""; current = null;
+    el("session").textContent = "";
+    el("games").hidden = true;
+    el("round").hidden = true;
+    el("logout").hidden = true;
+    el("login").hidden = false;
+    for (const id of ["login", "create", "join", "play"]) el(id).reset();
+    el("game-list").replaceChildren();
+    el("attempts").replaceChildren();
+    history.replaceState(null, "", location.pathname + location.search);
+    el("message").textContent = "Sesión cerrada.";
+    el("username").focus();
   });
   action("create", "submit", async () => {
     const game = await api("/juego", "POST", {number: el("create-number").value});

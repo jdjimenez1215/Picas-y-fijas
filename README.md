@@ -1,82 +1,58 @@
-# Picas y Fijas
+﻿# Picas y Fijas
 
-Juego para dos jugadores con API REST en Flask, interfaz web y despliegue en Kubernetes. Cada jugador elige un número de cuatro dígitos distintos. Al unirse el segundo jugador, el servidor elige al azar quién empieza. Luego alternan turnos e intentan adivinar el número del otro. Gana quien obtiene cuatro fijas.
+Juego de dos jugadores con interfaz web y API REST en Flask. Cada jugador elige cuatro dígitos distintos. El servidor sortea el primer turno cuando se une el segundo jugador. Gana quien consigue cuatro fijas.
 
-## Ejecutar localmente
+## Ejecutar en Windows
 
-Con Python 3.12, desde la raíz del repositorio:
+Desde la raíz del proyecto, con Python 3.12 instalado, ejecuta en PowerShell.
 
-```bash
+```powershell
 python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-python -m run
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m run
 ```
 
-En PowerShell, activa el entorno con `.\.venv\Scripts\Activate.ps1`. Abre **http://localhost:5000** en dos pestañas. Entra como `ana` en una y `luis` en la otra. Ana crea una partida con `4271`. Luis actualiza la lista, elige la partida y se une con `0123`. Pulsa **Ver partida** en cada pestaña para consultar el turno actual.
+Abre `http://localhost:5000` en dos pestañas. Entra como `ana` y `luis`, crea una partida y une al segundo jugador. Utiliza **Actualizar partida** para consultar el turno y las jugadas del rival. Al terminar se muestra el ganador y puedes volver a la sala. **Cerrar sesión** permite ingresar con otro nombre.
 
-## API REST
+Para detener el servidor pulsa `Ctrl+C`. Para volver a iniciarlo basta con el último comando. El servidor local utiliza el modo de desarrollo y recarga al guardar cambios.
 
-Las cinco operaciones de juego requieren `Authorization: Bearer <token>`. Envía los cuerpos con `Content-Type: application/json`. El campo `number` es una cadena de cuatro dígitos distintos, así que valores como `"0123"` conservan el cero inicial.
+En Linux o macOS utiliza `.venv/bin/python` en lugar de `.\.venv\Scripts\python.exe`.
 
-| Método y ruta | Cuerpo de ejemplo | Respuesta |
-| --- | --- | --- |
-| `POST /login` | `{"username":"ana"}` | 200 y token firmado |
-| `POST /juego` | `{"number":"4271"}` | 201 y partida en espera |
-| `PUT /juego/{id}` | `{"username":"luis","number":"0123"}` | 200 y partida en juego con su primer turno |
-| `POST /juego/{id}/jugar` | `{"number":"1234"}` | 200 con intento, jugador, picas y fijas |
-| `GET /juego/{id}` | | 200 con estado, creador, jugadores, turno, intentos y ganador |
-| `GET /juego` | | 200 con la lista de partidas de todos los estados |
+## Ejecutar en Killercoda
 
-El usuario enviado al unirse debe coincidir con el usuario del token. Los estados son `waiting`, `in_progress` y `finished`. Los errores regresan JSON. Un token faltante o inválido da 401. Jugar fuera de turno o sin pertenecer a la partida da 403. Una partida inexistente da 404. Los números inválidos y las transiciones inválidas dan 400.
+Sigue [la guía de Killercoda](killercoda/KILLERCODA.md) desde `root@controlplane`. Kubernetes descarga el repositorio público y ejecuta la aplicación con las imágenes `alpine/git` y `python`. El despliegue utiliza los tres archivos YAML de `killercoda`.
 
-```bash
-BASE=http://localhost:5000
-ANA=$(curl -fsS "$BASE/login" -H 'Content-Type: application/json' -d '{"username":"ana"}' | python -c 'import json,sys; print(json.load(sys.stdin)["token"])')
-LUIS=$(curl -fsS "$BASE/login" -H 'Content-Type: application/json' -d '{"username":"luis"}' | python -c 'import json,sys; print(json.load(sys.stdin)["token"])')
-ID=$(curl -fsS "$BASE/juego" -H "Authorization: Bearer $ANA" -H 'Content-Type: application/json' -d '{"number":"4271"}' | python -c 'import json,sys; print(json.load(sys.stdin)["id"])')
-curl -fsS -X PUT "$BASE/juego/$ID" -H "Authorization: Bearer $LUIS" -H 'Content-Type: application/json' -d '{"username":"luis","number":"0123"}'
-curl -fsS "$BASE/juego/$ID" -H "Authorization: Bearer $ANA"
-curl -fsS "$BASE/juego" -H "Authorization: Bearer $ANA"
-```
+## API
 
-Lee `turn` antes de enviar un intento. Si empieza Luis, ejecuta:
+Envía los cuerpos JSON con `Content-Type: application/json`. Todas las operaciones de `/juego` requieren `Authorization: Bearer TOKEN`.
 
-```bash
-curl -fsS "$BASE/juego/$ID/jugar" -H "Authorization: Bearer $LUIS" -H 'Content-Type: application/json' -d '{"number":"1234"}'
-```
+| Método | Ruta | Cuerpo JSON | Respuesta exitosa |
+| --- | --- | --- | --- |
+| GET | `/` | — | 200, página HTML |
+| POST | `/login` | `{"username":"ana"}` | 200, token firmado |
+| POST | `/juego` | `{"number":"4271"}` | 201, partida creada |
+| PUT | `/juego/{id}` | `{"username":"luis","number":"0123"}` | 200, partida con dos jugadores |
+| POST | `/juego/{id}/jugar` | `{"number":"0134"}` | 200, intento con picas y fijas |
+| GET | `/juego/{id}` | — | 200, estado completo para participantes |
+| GET | `/juego` | — | 200, resumen de todas las partidas |
 
-Eso devuelve una fija y dos picas contra `4271`. Si empieza Ana, usa el token `$ANA` y prueba `"0134"` contra `0123`.
+`number` es texto para conservar ceros iniciales. Debe contener exactamente cuatro dígitos ASCII diferentes. El usuario del cuerpo de la petición para unirse debe coincidir con el del token. El resultado de jugar contiene `player`, `guess`, `fijas` y `picas`. Consulta después `GET /juego/{id}` para obtener el turno, el estado y el ganador.
 
-## Docker
+Los estados son `waiting`, `in_progress` y `finished`. Los errores se devuelven como JSON con `error`. Los códigos principales son 400 para entradas o transiciones inválidas, 401 para token ausente, inválido o vencido, 403 para acceso o turno denegados, 404 para una partida inexistente, 405 para un método HTTP no admitido y 415 para un cuerpo enviado con tipo de contenido incorrecto.
 
-```bash
-docker build -t picas-y-fijas:1.0 .
-docker run --rm -p 5000:5000 -e PICAS_SECRET_KEY="$(openssl rand -hex 32)" picas-y-fijas:1.0
-```
+## Archivos para GitHub
 
-## Kubernetes
+Publica `app/`, `run.py`, `requirements.txt`, `killercoda/`, `.gitignore` y este `README.md`. El repositorio público utilizado por el Deployment es `https://github.com/jdjimenez1215/Picas-y-fijas.git` y el Pod obtiene su rama predeterminada.
 
-Construye la imagen como en el paso anterior. Hazla disponible para todos los nodos donde pueda arrancar el pod. Con kind usa `kind load docker-image picas-y-fijas:1.0`. Con Minikube usa `minikube image load picas-y-fijas:1.0`. Para un clúster remoto como Killercoda, publica la imagen en un registro accesible y cambia `image` en `k8s/deployment.yaml` por el nombre completo de esa imagen con su etiqueta.
+El entorno `.venv/` y las cachés se generan localmente y están excluidos por `.gitignore`. La clave `PICAS_SECRET_KEY` se configura en ejecución. El Secret de Kubernetes se crea desde la terminal.
 
-```bash
-kubectl apply -f k8s/namespace.yaml
-kubectl -n picas-y-fijas create secret generic picas-auth \
-  --from-literal=signing-key="$(openssl rand -hex 32)" \
-  --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml
-kubectl -n picas-y-fijas rollout status deployment/picas-y-fijas
-kubectl -n picas-y-fijas port-forward service/picas-y-fijas 8080:80
-```
+## Organización y límites de la demostración
 
-Abre **http://localhost:8080**. En Killercoda usa la vista del puerto 8080 de su interfaz y añade `--address 0.0.0.0` al comando de port-forward.
+- `app/domain` contiene las reglas y los modelos del juego.
+- `app/services` coordina autenticación y partidas.
+- `app/repositories` define los contratos de almacenamiento y sus implementaciones en memoria.
+- `app/routes` expone las operaciones HTTP y verifica los tokens.
+- `app/templates/index.html` contiene la interfaz y las peticiones del navegador.
+- `app/__init__.py` crea Flask, conecta servicios y registra las rutas y errores.
 
-El Service ClusterIP dirige el puerto 80 al puerto 5000 del contenedor. Se usa una sola réplica y un solo worker porque el repositorio vive en memoria del proceso. Al reiniciar el proceso se pierden las partidas. Para sostener varias réplicas o conservar partidas entre reinicios se necesita un repositorio compartido. El login por nombre es para la demostración y permite que cualquiera que conozca un nombre actúe como ese jugador. Los tokens vencen después de una hora.
-
-## Código
-
-- `app/domain` contiene las reglas del juego.
-- `app/services` coordina el dominio y los repositorios.
-- `app/repositories` conserva usuarios y partidas en memoria.
-- `app/routes` publica la API y aplica el decorador de autenticación.
-- `app/__init__.py` ensambla las dependencias y registra las rutas.
+El almacenamiento vive en la memoria de un proceso. Reiniciarlo borra usuarios y partidas. Se utiliza una réplica y un worker para compartir ese estado entre los jugadores. El login identifica por nombre y genera tokens firmados con una vigencia de una hora. Cerrar sesión elimina el token de la pestaña. Un token ya copiado mantiene su validez hasta vencer o cambiar la clave de firma.

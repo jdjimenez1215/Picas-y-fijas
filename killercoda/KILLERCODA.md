@@ -1,14 +1,12 @@
-﻿# Desplegar Picas y Fijas con kubectl en Killercoda
+﻿# Ejecutar Picas y Fijas en Killercoda
 
-Ejecuta los siguientes bloques desde la terminal `root@controlplane` del Playground Kubernetes. Copia los comandos sin incluir el texto del prompt.
+Sigue estos pasos en el Playground Kubernetes desde la terminal `root@controlplane`. La aplicación utiliza el código público de GitHub y las imágenes públicas `alpine/git:latest` y `python:3.12-slim`.
 
-El Deployment descarga el código público de GitHub con un contenedor de inicio `alpine/git`. Después el contenedor `python:3.12-slim` instala las dependencias y ejecuta el juego con Gunicorn. Kubernetes descarga automáticamente esas imágenes públicas. Puedes realizar el despliegue con Git y kubectl, sin instalar Podman, abrir Docker Desktop o publicar una imagen propia.
+## 1. Publicar y descargar el código
 
-## 1. Publicar los cambios y descargar el proyecto
+Publica en GitHub `app/`, `run.py`, `requirements.txt`, `killercoda/`, `.gitignore` y `README.md`. El Deployment obtiene la rama predeterminada de `https://github.com/jdjimenez1215/Picas-y-fijas.git`.
 
-Sube a GitHub los cambios de la aplicación y los archivos de `killercoda`, incluido el Deployment actualizado. El Pod descargará la rama predeterminada del repositorio público.
-
-En Killercoda ejecuta lo siguiente.
+En la terminal de Killercoda ejecuta los siguientes comandos.
 
 ```bash
 kubectl wait --for=condition=Ready nodes --all --timeout=180s
@@ -20,13 +18,12 @@ ls killercoda
 git log -1 --oneline
 ```
 
-Si ya clonaste el repositorio, entra a su carpeta y ejecuta `git pull --ff-only` para obtener los cambios.
+Si ya está clonado, entra a la carpeta y ejecuta `git pull --ff-only`.
 
-## 2. Crear el namespace y la clave de autenticación
+## 2. Crear el namespace y el Secret
 
 ```bash
 kubectl apply -f killercoda/namespace.yaml
-kubectl get ns
 
 if ! kubectl -n picas-y-fijas get secret picas-auth >/dev/null 2>&1; then
   kubectl -n picas-y-fijas create secret generic picas-auth \
@@ -34,30 +31,20 @@ if ! kubectl -n picas-y-fijas get secret picas-auth >/dev/null 2>&1; then
 fi
 ```
 
-El Secret proporciona la clave de firma de los tokens del login.
+El Secret guarda la clave usada para firmar los tokens del login. Repetir el bloque conserva el Secret existente.
 
 ## 3. Aplicar el Deployment y el Service
 
 ```bash
 kubectl apply -f killercoda/deployment.yaml
 kubectl apply -f killercoda/service.yaml
-
 kubectl -n picas-y-fijas rollout status deployment/picas-y-fijas --timeout=300s
 kubectl get all -n picas-y-fijas
 kubectl -n picas-y-fijas get pods -o wide
 ```
 
-Espera a que el Pod aparezca `Running` con `READY 1/1`. El primer arranque requiere descargar las imágenes, el código y los paquetes Python. El entorno necesita acceso a GitHub, al registro de imágenes y a PyPI.
+El contenedor de inicio `download-code` descarga el código en un volumen compartido. Después `web` instala `requirements.txt` y Gunicorn e inicia el servidor en el puerto `5000`. El Pod debe aparecer `Running` con `READY 1/1`. Necesita conexión al registro de imágenes, a GitHub y a PyPI.
 
-El namespace del Deployment y del Service es `picas-y-fijas`. El Service ya está definido en el archivo y se crea con `kubectl apply`.
-
-Si habías aplicado el ajuste de la guía anterior que fijaba el Pod a `controlplane`, ejecuta este comando antes de esperar el despliegue para retirar ese selector.
-
-```bash
-kubectl -n picas-y-fijas patch deployment picas-y-fijas \
-  --type merge -p '{"spec":{"template":{"spec":{"nodeSelector":null}}}}'
-kubectl -n picas-y-fijas rollout status deployment/picas-y-fijas --timeout=300s
-```
 
 ## 4. Abrir el juego
 
@@ -66,9 +53,9 @@ kubectl port-forward -n picas-y-fijas service/picas-y-fijas \
   --address 0.0.0.0 8080:80
 ```
 
-Deja el comando ejecutándose. En Killercoda abre **Traffic / Ports**, introduce `8080` y abre el enlace generado. Abre el mismo enlace en dos pestañas y entra con nombres distintos para jugar.
+Mantén este comando ejecutándose. Abre **Traffic / Ports** en Killercoda, introduce `8080` y abre el enlace generado. Usa el mismo enlace en dos pestañas y entra con nombres diferentes.
 
-Desde otra terminal del mismo entorno puedes comprobar la web y el login.
+Desde otra terminal de la misma sesión puedes comprobar la aplicación.
 
 ```bash
 curl -i http://localhost:8080/
@@ -77,24 +64,11 @@ curl -i http://localhost:8080/login \
   -d '{"username":"ana"}'
 ```
 
-Ambas peticiones deben responder HTTP `200`. El login devuelve un token JSON.
+Ambas peticiones deben responder con HTTP `200`. El login devuelve JSON con un token. En `README.md` están todas las rutas y los cuerpos de ejemplo.
 
-## Endpoints REST y JSON
+## 5. Actualizar la aplicación
 
-| Método | Ruta | Operación |
-| --- | --- | --- |
-| POST | `/login` | Iniciar sesión |
-| POST | `/juego` | Crear partida |
-| PUT | `/juego/{ID}` | Unirse a una partida |
-| POST | `/juego/{ID}/jugar` | Enviar un intento |
-| GET | `/juego/{ID}` | Consultar el estado |
-| GET | `/juego` | Listar partidas |
-
-Las rutas `/juego` requieren el encabezado `Authorization: Bearer TOKEN`. Para enviar JSON utiliza `Content-Type: application/json`. En `README.md` están los cuerpos de ejemplo. Puedes importar `postman/Picas-y-Fijas.postman_collection.json` y configurar la URL base con el enlace generado por Killercoda.
-
-## Actualizar el código desplegado
-
-Después de publicar los cambios en la rama predeterminada de GitHub, ejecuta lo siguiente.
+Publica primero los cambios en la rama predeterminada de GitHub. En la carpeta del proyecto de Killercoda ejecuta lo siguiente.
 
 ```bash
 git pull --ff-only
@@ -104,15 +78,7 @@ kubectl -n picas-y-fijas rollout restart deployment/picas-y-fijas
 kubectl -n picas-y-fijas rollout status deployment/picas-y-fijas --timeout=300s
 ```
 
-El nuevo Pod descarga el código publicado. Si se interrumpe el reenvío de puerto, vuelve a ejecutar el comando del paso 4.
-
-## Diferencias con el ejemplo del profesor
-
-El ejemplo usa `nginx:1.25`, que ya contiene el servidor Nginx. Este Deployment usa una imagen de Python y descarga el código del juego desde el repositorio para ejecutar la API REST y la interfaz web.
-
-Se utiliza una réplica y un worker porque usuarios y partidas viven en memoria del proceso. Reiniciar o reemplazar el Pod borra esos datos. Para utilizar tres réplicas con partidas compartidas hace falta un almacenamiento común.
-
-El Service recibe en el puerto `80` y envía las peticiones al puerto `5000` de la aplicación. El enlace de Killercoda accede mediante el puerto `8080` del reenvío.
+El nuevo Pod vuelve a descargar el código y las dependencias. Si termina el reenvío de puerto, ejecuta nuevamente el comando del paso 4.
 
 ## Diagnóstico
 
@@ -124,18 +90,18 @@ kubectl -n picas-y-fijas logs deployment/picas-y-fijas -c web
 kubectl -n picas-y-fijas get events --sort-by=.metadata.creationTimestamp
 ```
 
-- **Init:Error o Init:CrashLoopBackOff**. Revisa los logs de `download-code` y comprueba que el repositorio sea público y accesible desde el entorno.
-- **ImagePullBackOff**. Revisa los eventos del Pod para identificar la imagen y el error de descarga. Las imágenes utilizadas son `alpine/git:latest` y `python:3.12-slim`.
-- **ErrImageNeverPull**. Actualiza el archivo `killercoda/deployment.yaml` desde GitHub y vuelve a aplicarlo. El contenedor `web` debe utilizar `python:3.12-slim` con `imagePullPolicy: IfNotPresent`.
-- **CreateContainerConfigError**. Comprueba que exista el Secret `picas-auth` en `picas-y-fijas`.
-- **CrashLoopBackOff**. Revisa los logs de `web`, incluida la instalación de dependencias y el inicio de Gunicorn.
-- **Pending**. Revisa los eventos y los recursos disponibles en los nodos.
-- **Página inaccesible**. Comprueba `READY 1/1`, el reenvío activo y el enlace del puerto `8080` de esta sesión.
+| Síntoma | Comprobación |
+| --- | --- |
+| `Init:Error` o `Init:CrashLoopBackOff` | Logs de `download-code` y acceso al repositorio público |
+| `ImagePullBackOff` | Eventos del Pod y descarga de las imágenes públicas |
+| `ErrImageNeverPull` | El YAML actualizado debe usar `python:3.12-slim` y `IfNotPresent` |
+| `CreateContainerConfigError` | Secret `picas-auth` y clave `signing-key` en el namespace correcto |
+| `CrashLoopBackOff` | Logs de `web`, instalación de paquetes y arranque de Gunicorn |
+| `Pending` | Eventos, recursos de los nodos y selectores antiguos |
+| Página inaccesible | Pod `READY 1/1`, reenvío activo y enlace al puerto `8080` |
 
-Al terminar la sesión de Killercoda se pierde el entorno. En una sesión nueva repite los pasos de la guía.
+El Service `ClusterIP` recibe en `80` y dirige al puerto nombrado `http`, que corresponde a `5000`. El namespace del Deployment, el Service y el Secret es `picas-y-fijas`.
 
-## Referencias
+Se utiliza una réplica y un worker porque los datos están en memoria. Reiniciar el proceso o reemplazar el Pod borra las partidas. Al terminar la sesión de Killercoda se pierde el entorno y debe repetirse la guía en la siguiente sesión.
 
-- [Contenedores de inicio de Kubernetes](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/).
-- [Imagen pública alpine/git](https://github.com/alpine-docker/git).
-- [Reenvío de puertos en Kubernetes](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/).
+Las imágenes se descargan desde un registro público. Tu cuenta de Docker Hub y una imagen propia son opcionales para este procedimiento. El contenedor prepara la aplicación durante el arranque.
