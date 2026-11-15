@@ -1,0 +1,939 @@
+{
+  "info": {
+    "name": "Picas y Fijas - 19 pruebas esenciales",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "19 peticiones a los seis endpoints del profesor. Ejecutar todas en orden, una iteracion. Configurar baseUrl sin barra final. Guarda tokens e IDs y respeta el turno aleatorio. Crea tres partidas para comprobar sin completar, en juego y terminado. Incluye errores 400, 401, 403, 404 y 415."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "tokenAna",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenLuis",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "gameId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "waitingId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "activeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "turnToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "firstPlayer",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherPlayer",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "winningGuess",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - POST /login",
+      "item": [
+        {
+          "name": "01 - Registrar postman_ana [200]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 200. Caso exitoso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"postman_ana\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => { if (pm.response.code !== 200) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "if (pm.response.code === 200) pm.collectionVariables.set(\"tokenAna\", data.token);",
+                  "check(typeof data.token === \"string\" && data.token.length > 0, \"Token firmado recibido\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "02 - Registrar postman_luis [200]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 200. Caso exitoso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"postman_luis\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => { if (pm.response.code !== 200) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "if (pm.response.code === 200) pm.collectionVariables.set(\"tokenLuis\", data.token);",
+                  "check(typeof data.token === \"string\" && data.token.length > 0, \"Token firmado recibido\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "03 - Username Ausente [400]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 400. Caso de error intencional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => { if (pm.response.code !== 400) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(typeof data.error === \"string\", \"Error descriptivo\");",
+                  "check(data.error.includes(\"username\"), \"Motivo de error correcto\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - POST /juego",
+      "item": [
+        {
+          "name": "04 - Sin token [401]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/juego",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 401. Caso de error intencional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"number\": \"4271\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => { if (pm.response.code !== 401) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(typeof data.error === \"string\", \"Error descriptivo\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "05 - Content-Type incorrecto [415]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/juego",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAna}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "description": "HTTP esperado: 415. Caso de error intencional.",
+            "body": {
+              "mode": "raw",
+              "raw": "number=1234",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 415\", () => { if (pm.response.code !== 415) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(typeof data.error === \"string\", \"Error descriptivo\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "06 - Numero Repetidos [400]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/juego",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAna}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 400. Caso de error intencional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"number\": \"1123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => { if (pm.response.code !== 400) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(typeof data.error === \"string\", \"Error descriptivo\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "07 - Crear Principal [201]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/juego",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAna}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 201. Caso exitoso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"number\": \"4271\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => { if (pm.response.code !== 201) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"gameId\", data.id);",
+                  "check(data.status === \"waiting\" && data.turn === null && data.winner === null, \"Estado inicial sin completar\");",
+                  "check(data.creator === \"postman_ana\" && data.players.length === 1, \"Creador y participante\");",
+                  "check(data.attempts.length === 0 && !(\"secret\" in data) && !(\"_secrets\" in data), \"Sin intentos ni secretos publicados\");",
+                  "check(pm.response.headers.get(\"Location\") === \"/juego/\" + data.id, \"Location del recurso creado\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "08 - Crear Sin completar [201]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/juego",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAna}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 201. Caso exitoso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"number\": \"0123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => { if (pm.response.code !== 201) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"waitingId\", data.id);",
+                  "check(data.status === \"waiting\" && data.turn === null && data.winner === null, \"Estado inicial sin completar\");",
+                  "check(data.creator === \"postman_ana\" && data.players.length === 1, \"Creador y participante\");",
+                  "check(data.attempts.length === 0 && !(\"secret\" in data) && !(\"_secrets\" in data), \"Sin intentos ni secretos publicados\");",
+                  "check(pm.response.headers.get(\"Location\") === \"/juego/\" + data.id, \"Location del recurso creado\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "09 - Crear Se mantendra en juego [201]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/juego",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAna}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 201. Caso exitoso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"number\": \"5678\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => { if (pm.response.code !== 201) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"activeId\", data.id);",
+                  "check(data.status === \"waiting\" && data.turn === null && data.winner === null, \"Estado inicial sin completar\");",
+                  "check(data.creator === \"postman_ana\" && data.players.length === 1, \"Creador y participante\");",
+                  "check(data.attempts.length === 0 && !(\"secret\" in data) && !(\"_secrets\" in data), \"Sin intentos ni secretos publicados\");",
+                  "check(pm.response.headers.get(\"Location\") === \"/juego/\" + data.id, \"Location del recurso creado\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - PUT /juego/{ID}",
+      "item": [
+        {
+          "name": "10 - Unir segundo jugador [200]",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/juego/{{gameId}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenLuis}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 200. Caso exitoso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"postman_luis\", \"number\": \"0123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => { if (pm.response.code !== 200) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(data.status === \"in_progress\" && data.players.length === 2, \"Dos participantes en juego\");",
+                  "check([\"postman_ana\",\"postman_luis\"].includes(data.turn), \"Turno inicial valido\");",
+                  "const ana = data.turn === \"postman_ana\";",
+                  "pm.collectionVariables.set(\"turnToken\", pm.collectionVariables.get(ana ? \"tokenAna\" : \"tokenLuis\"));",
+                  "pm.collectionVariables.set(\"otherToken\", pm.collectionVariables.get(ana ? \"tokenLuis\" : \"tokenAna\"));",
+                  "pm.collectionVariables.set(\"firstPlayer\", data.turn);",
+                  "pm.collectionVariables.set(\"otherPlayer\", ana ? \"postman_luis\" : \"postman_ana\");",
+                  "pm.collectionVariables.set(\"winningGuess\", ana ? \"0123\" : \"4271\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "11 - Unir segundo jugador [200]",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/juego/{{activeId}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenLuis}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 200. Caso exitoso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"postman_luis\", \"number\": \"0123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => { if (pm.response.code !== 200) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(data.status === \"in_progress\" && data.players.length === 2, \"Dos participantes en juego\");",
+                  "check([\"postman_ana\",\"postman_luis\"].includes(data.turn), \"Turno inicial valido\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - POST /juego/{ID}/jugar",
+      "item": [
+        {
+          "name": "12 - No es su turno [403]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/juego/{{gameId}}/jugar",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 403. Caso de error intencional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"number\": \"8901\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => { if (pm.response.code !== 403) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(typeof data.error === \"string\", \"Error descriptivo\");",
+                  "check(data.error.includes(\"turno\"), \"Motivo de error correcto\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "13 - Intento valido y puntuacion [200]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/juego/{{gameId}}/jugar",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{turnToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 200. Caso exitoso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"number\": \"8901\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => { if (pm.response.code !== 200) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(data.player === pm.collectionVariables.get(\"firstPlayer\"), \"Jugo el participante esperado\");",
+                  "const ana = data.player === \"postman_ana\";",
+                  "check(data.guess === \"8901\" && data.fijas === (ana ? 0 : 1) && data.picas === (ana ? 2 : 0), \"Picas y fijas correctas\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "14 - Intento valido y puntuacion [200]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/juego/{{gameId}}/jugar",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 200. Caso exitoso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"number\": \"8901\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => { if (pm.response.code !== 200) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(data.player === pm.collectionVariables.get(\"otherPlayer\"), \"Jugo el participante esperado\");",
+                  "const ana = data.player === \"postman_ana\";",
+                  "check(data.guess === \"8901\" && data.fijas === (ana ? 0 : 1) && data.picas === (ana ? 2 : 0), \"Picas y fijas correctas\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "15 - Victoria con cuatro fijas [200]",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/juego/{{gameId}}/jugar",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{turnToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "HTTP esperado: 200. Caso exitoso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"number\": \"{{winningGuess}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => { if (pm.response.code !== 200) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(data.fijas === 4 && data.picas === 0, \"Cuatro fijas y cero picas\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 - GET /juego/{ID}",
+      "item": [
+        {
+          "name": "16 - ID inexistente [404]",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/juego/no-existe-postman",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAna}}"
+              }
+            ],
+            "description": "HTTP esperado: 404. Caso de error intencional."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => { if (pm.response.code !== 404) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(typeof data.error === \"string\", \"Error descriptivo\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "17 - Consultar En juego como participante [200]",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/juego/{{activeId}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAna}}"
+              }
+            ],
+            "description": "HTTP esperado: 200. Caso exitoso."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => { if (pm.response.code !== 200) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(data.status === \"in_progress\" && data.turn !== null && data.winner === null, \"En juego con turno y sin ganador\");",
+                  "check(!(\"secret\" in data) && !(\"_secrets\" in data), \"No revela secretos\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "18 - Consultar Terminado como participante [200]",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/juego/{{gameId}}",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAna}}"
+              }
+            ],
+            "description": "HTTP esperado: 200. Caso exitoso."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => { if (pm.response.code !== 200) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(data.status === \"finished\" && data.turn === null && data.winner === pm.collectionVariables.get(\"firstPlayer\"), \"Terminado con ganador correcto\");",
+                  "check(data.attempts.length === 3, \"Historial completo\");",
+                  "check(!(\"secret\" in data) && !(\"_secrets\" in data), \"No revela secretos\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - GET /juego",
+      "item": [
+        {
+          "name": "19 - Listar todos los estados y ganadores [200]",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/juego",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAna}}"
+              }
+            ],
+            "description": "HTTP esperado: 200. Caso exitoso."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => { if (pm.response.code !== 200) throw new Error(\"HTTP \" + pm.response.code + \": \" + pm.response.text()); });",
+                  "const data = pm.response.json();",
+                  "function check(ok, message) { pm.test(message, () => { if (!ok) throw new Error(message); }); }",
+                  "check((pm.response.headers.get(\"Content-Type\") || \"\").includes(\"application/json\"), \"Respuesta JSON\");",
+                  "check(Array.isArray(data), \"Lista de partidas\");",
+                  "for (const [key,status] of [[\"waitingId\",\"waiting\"],[\"activeId\",\"in_progress\"],[\"gameId\",\"finished\"]]) {",
+                  " const game = data.find(g => g.id === pm.collectionVariables.get(key));",
+                  " check(!!game && game.status === status && game.creator === \"postman_ana\", \"Estado y creador: \" + status);",
+                  " if (game && status === \"finished\") check(game.winner === pm.collectionVariables.get(\"firstPlayer\"), \"Ganador en listado\");",
+                  "}",
+                  "check(data.every(g => !(\"attempts\" in g) && !(\"turn\" in g) && !(\"secret\" in g) && !(\"_secrets\" in g)), \"Listado sin detalles privados\");"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}

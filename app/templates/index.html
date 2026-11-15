@@ -112,11 +112,12 @@
     el("play").reset();
     el("lobby").hidden = true;
     el("round").hidden = false;
-    el("update-round").hidden = false;
     el("round-title").focus();
     window.scrollTo({top: 0, behavior: "smooth"});
     const member = game.players.includes(username);
     const finished = game.status === "finished";
+    el("update-round").hidden = finished;
+    el("update-round").disabled = finished;
     el("round-title").textContent = "Partida #" + game.id.slice(0, 8);
     el("state").textContent = [states[game.status], "Jugadores: " + game.players.join(" y "),
       game.turn && "Turno de " + game.turn, game.winner && "Ganó " + game.winner].filter(Boolean).join(" · ");
@@ -125,7 +126,7 @@
     el("play").hidden = !canPlay;
     el("play").querySelector("button").disabled = !canPlay;
     el("guess").disabled = !canPlay;
-    el("guidance").textContent = finished ? "Ronda terminada. Puedes volver a la sala y crear otra partida."
+    el("guidance").textContent = finished ? "Ganó " + game.winner + ". Vuelve a la sala para jugar otra partida."
       : game.status === "waiting" ? (member ? "Espera a que otro jugador se una. Pulsa Actualizar partida para consultar novedades." : "Introduce tu número secreto para unirte.")
       : game.turn === username ? "Es tu turno. Escribe cuatro dígitos distintos." : "Espera el turno de tu rival. Pulsa Actualizar partida para ver su jugada.";
     el("attempts").replaceChildren(...game.attempts.map(attempt => {
@@ -229,10 +230,14 @@
     const result = await api(path(current.id) + "/jugar", "POST", {number: el("guess").value});
     el("play").reset();
     await openGame(current.id);
-    el("message").textContent = result.fijas + " fijas y " + result.picas + " picas.";
+    el("message").textContent = current.status === "finished"
+      ? "Ganó " + current.winner + "."
+      : result.fijas + " fijas y " + result.picas + " picas.";
   });
   action("refresh", "click", lobby);
-  action("update-round", "click", () => openGame(current.id));
+  action("update-round", "click", () => {
+    if (current && current.status !== "finished") return openGame(current.id);
+  });
   action("back", "click", lobby);
   window.addEventListener("popstate", async () => {
     if (!token || busy) return;
