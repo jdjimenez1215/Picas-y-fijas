@@ -1,4 +1,6 @@
-from flask import Flask
+import os
+
+from flask import Flask, render_template
 from werkzeug.exceptions import HTTPException
 
 from app.repositories.memory_game_repository import MemoryGameRepository
@@ -8,6 +10,7 @@ from app.services.game_service import GameService
 
 from app.domain.exceptions import (
     DomainError,
+    ForbiddenError,
     NotFoundError,
     UnauthorizedError,
 )
@@ -16,12 +19,13 @@ from app.routes.auth_routes import auth_bp
 from app.routes.game_routes import game_bp
 
 
-def create_app(secret_key: str = "clave-de-desarrollo") -> Flask:
+def create_app(secret_key: str | None = None) -> Flask:
     """
     Factory de la app Flask.
     Aqui se ensambla TODO: repositorios, servicios, blueprints y handlers de error.
     """
     app = Flask(__name__)
+    secret_key = secret_key or os.environ.get("PICAS_SECRET_KEY") or os.urandom(32).hex()
 
     # ---------- Composition Root ----------
     user_repo = MemoryUserRepository()
@@ -36,6 +40,10 @@ def create_app(secret_key: str = "clave-de-desarrollo") -> Flask:
     app.register_blueprint(auth_bp)
     app.register_blueprint(game_bp)
 
+    @app.get("/")
+    def index():
+        return render_template("index.html")
+
     # ---------- Errores de DOMINIO -> HTTP ----------
     @app.errorhandler(NotFoundError)
     def handle_not_found(e):
@@ -44,6 +52,10 @@ def create_app(secret_key: str = "clave-de-desarrollo") -> Flask:
     @app.errorhandler(UnauthorizedError)
     def handle_unauthorized(e):
         return {"error": str(e)}, 401
+
+    @app.errorhandler(ForbiddenError)
+    def handle_forbidden(e):
+        return {"error": str(e)}, 403
 
     @app.errorhandler(DomainError)
     def handle_domain(e):

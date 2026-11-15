@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Picas y Fijas</title>
+  <style>
+    body { font-family: "Inter", system-ui, sans-serif; background: #f3f5f9; color: #172338; margin: 0; }
+    main { max-width: 46rem; margin: auto; padding: 2rem 1rem; }
+    section { background: white; border: 1px solid #d8e0ec; border-radius: .75rem; margin: 1rem 0; padding: 1rem; }
+    input, select, button { font: inherit; padding: .55rem; border-radius: .35rem; border: 1px solid #8998ad; max-width: 100%; }
+    button { background: #164a9d; color: white; cursor: pointer; }
+    label { display: block; margin-bottom: .4rem; }
+    form, .actions { margin-block: .8rem; }
+    li { margin-block: .35rem; }
+    #message { min-height: 1.5rem; }
+    [hidden] { display: none !important; }
+    .secondary { background: white; color: #164a9d; }
+    .game-list { display: grid; gap: .75rem; margin-top: 1rem; }
+    .game-card { border: 1px solid #d8e0ec; border-radius: .6rem; padding: 1rem; }
+    .game-card h3, .game-card p { margin: 0 0 .5rem; }
+    .game-card p { color: #526178; }
+    input { box-sizing: border-box; }
+    button { margin: .2rem 0; }
+    #state { font-weight: 600; }
+    @media (max-width: 480px) { input, select { width: 100%; } main { padding: 1rem; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Picas y Fijas</h1>
+  <p>Adivina el número secreto del otro jugador. Una fija acierta el dígito y su posición. Una pica acierta solo el dígito.</p>
+  <section>
+    <form id="login">
+      <label for="username">Nombre de jugador</label>
+      <input id="username" required autocomplete="off">
+      <button>Entrar</button>
+    </form>
+    <p id="session"></p>
+  </section>
+  <section id="games" hidden>
+    <div id="lobby">
+    <h2>Sala de partidas</h2>
+    <form id="create">
+      <label for="create-number">Tu número secreto de cuatro dígitos distintos</label>
+      <input id="create-number" type="password" inputmode="numeric" pattern="[0-9]{4}" required>
+      <button>Crear partida</button>
+    </form>
+    <h2>Listado de partidas</h2>
+    <button id="refresh" class="secondary">Actualizar listado</button>
+    <div id="game-list" class="game-list"></div>
+    </div>
+    <div id="round" hidden>
+    <h2 id="round-title" tabindex="-1">Partida</h2>
+    <p id="state"></p>
+    <p id="guidance"></p>
+    <form id="join">
+      <label for="join-number">Tu número secreto para unirte</label>
+      <input id="join-number" type="password" inputmode="numeric" pattern="[0-9]{4}" required>
+      <button>Unirme</button>
+    </form>
+    <form id="play">
+      <label for="guess">Tu intento</label>
+      <input id="guess" inputmode="numeric" pattern="[0-9]{4}" required>
+      <button>Jugar</button>
+    </form>
+    <ol id="attempts" aria-label="Historial de intentos"></ol>
+    <button id="update-round" class="secondary">Actualizar partida</button>
+    <button id="back" class="secondary">Volver a la sala</button>
+    </div>
+  </section>
+  <p id="message" role="status"></p>
+</main>
+<script>
+  const el = id => document.getElementById(id);
+  const states = {waiting: "Sin completar", in_progress: "En juego", finished: "Terminado"};
+  let token = "", username = "", current = null, busy = false;
+  const path = id => "/juego/" + encodeURIComponent(id);
+  const routeId = () => location.hash.startsWith("#/partidas/") ? decodeURIComponent(location.hash.slice(11)) : "";
+
+  async function api(url, method = "GET", body) {
+    const headers = {};
+    if (body) headers["Content-Type"] = "application/json";
+    if (token) headers.Authorization = "Bearer " + token;
+    const response = await fetch(url, {method, headers, body: JSON.stringify(body)});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.description || data.error);
+    return data;
+  }
+
+  function action(id, event, run) {
+    el(id).addEventListener(event, async ev => {
+      ev.preventDefault();
+      if (busy) return;
+      busy = true;
+      el("message").textContent = "";
+      try { await run(); }
+      catch (error) { el("message").textContent = error.message; }
+      finally { busy = false; }
+    });
+  }
+
+  function navigate(id = "") {
+    const hash = id ? "#/partidas/" + encodeURIComponent(id) : "#/partidas";
+    history.pushState(null, "", hash);
+  }
+
+  function show(game) {
+    if (!game.players.includes(username)) throw new Error("Solo los participantes pueden acceder a la partida.");
+    current = game;
+    el("join").reset();
+    el("play").reset();
+    el("lobby").hidden = true;
+    el("round").hidden = false;
+    el("update-round").hidden = false;
+    el("round-title").focus();
+    window.scrollTo({top: 0, behavior: "smooth"});
+    const member = game.players.includes(username);
+    const finished = game.status === "finished";
+    el("round-title").textContent = "Partida #" + game.id.slice(0, 8);
+    el("state").textContent = [states[game.status], "Jugadores: " + game.players.join(" y "),
+      game.turn && "Turno de " + game.turn, game.winner && "Ganó " + game.winner].filter(Boolean).join(" · ");
+    el("join").hidden = member || game.status !== "waiting";
+    const canPlay = member && game.status === "in_progress" && game.turn === username;
+    el("play").hidden = !canPlay;
+    el("play").querySelector("button").disabled = !canPlay;
+    el("guess").disabled = !canPlay;
+    el("guidance").textContent = finished ? "Ronda terminada. Puedes volver a la sala y crear otra partida."
+      : game.status === "waiting" ? (member ? "Espera a que otro jugador se una. Pulsa Actualizar partida para consultar novedades." : "Introduce tu número secreto para unirte.")
+      : game.turn === username ? "Es tu turno. Escribe cuatro dígitos distintos." : "Espera el turno de tu rival. Pulsa Actualizar partida para ver su jugada.";
+    el("attempts").replaceChildren(...game.attempts.map(attempt => {
+      const item = document.createElement("li");
+      item.textContent = attempt.player + " jugó " + attempt.guess + " · " + attempt.fijas + " fijas y " + attempt.picas + " picas";
+      return item;
+    }));
+  }
+
+  async function lobby() {
+    const games = await api("/juego");
+    current = null;
+    el("lobby").hidden = false;
+    el("round").hidden = true;
+    const list = el("game-list");
+    list.replaceChildren();
+    if (!games.length) {
+      const empty = document.createElement("p");
+      empty.textContent = "No hay partidas. Crea una para comenzar.";
+      list.append(empty);
+    }
+    for (const game of games) {
+      const card = document.createElement("article");
+      card.className = "game-card";
+      const title = document.createElement("h3");
+      title.textContent = states[game.status] + " · #" + game.id.slice(0, 8);
+      const info = document.createElement("p");
+      info.textContent = "Creada por " + game.creator + " · " + game.players.length + "/2 jugadores"
+        + (game.winner ? " · Ganó " + game.winner : "");
+      const button = document.createElement("button");
+      const member = game.players.includes(username);
+      button.disabled = !member && game.status !== "waiting";
+      button.textContent = member ? (game.status === "finished" ? "Ver resultado" : "Acceder a mi partida")
+        : game.status === "waiting" ? "Unirme"
+        : game.status === "finished" ? "Partida terminada" : "Partida llena";
+      button.addEventListener("click", async () => {
+        if (busy) return;
+        busy = true;
+        el("message").textContent = "";
+        try {
+          if (member) await openGame(game.id);
+          else if (game.status === "waiting") await showInvitation(game);
+        }
+        catch (error) { el("message").textContent = error.message; }
+        finally { busy = false; }
+      });
+      card.append(title, info, button);
+      list.append(card);
+    }
+    navigate();
+  }
+
+  async function openGame(id) {
+    if (!id) throw new Error("Selecciona una partida.");
+    const game = await api(path(id));
+    navigate(id);
+    show(game);
+  }
+
+  async function showInvitation(game) {
+    const games = await api("/juego");
+    game = games.find(item => item.id === game.id);
+    if (!game || game.status !== "waiting") {
+      await lobby();
+      throw new Error("Esta partida ya no admite jugadores. Elige una sin completar.");
+    }
+    current = game;
+    el("lobby").hidden = true;
+    el("round").hidden = false;
+    el("round-title").textContent = "Unirme a la partida #" + game.id.slice(0, 8);
+    el("state").textContent = "Creada por " + game.creator;
+    el("guidance").textContent = "Introduce tu número secreto para unirte y acceder a la partida.";
+    el("join").reset();
+    el("join").hidden = false;
+    el("play").hidden = true;
+    el("update-round").hidden = true;
+    el("attempts").replaceChildren();
+    history.pushState(null, "", "#/unirme/" + encodeURIComponent(game.id));
+    el("round-title").focus();
+    window.scrollTo({top: 0, behavior: "smooth"});
+  }
+
+  action("login", "submit", async () => {
+    const name = el("username").value.trim();
+    const session = await api("/login", "POST", {username: name});
+    token = session.token; username = name;
+    el("session").textContent = "Jugando como " + username;
+    el("login").hidden = true;
+    el("games").hidden = false;
+    await lobby();
+  });
+  action("create", "submit", async () => {
+    const game = await api("/juego", "POST", {number: el("create-number").value});
+    el("create").reset(); navigate(game.id); show(game);
+  });
+  action("join", "submit", async () => {
+    const game = await api(path(current.id), "PUT", {username, number: el("join-number").value});
+    el("join").reset(); navigate(game.id); show(game);
+  });
+  action("play", "submit", async () => {
+    const result = await api(path(current.id) + "/jugar", "POST", {number: el("guess").value});
+    el("play").reset();
+    await openGame(current.id);
+    el("message").textContent = result.fijas + " fijas y " + result.picas + " picas.";
+  });
+  action("refresh", "click", lobby);
+  action("update-round", "click", () => openGame(current.id));
+  action("back", "click", lobby);
+  window.addEventListener("popstate", async () => {
+    if (!token || busy) return;
+    try { const id = routeId(); if (id) await openGame(id); else await lobby(); }
+    catch (error) { el("message").textContent = error.message; }
+  });
+</script>
+</body>
+</html>

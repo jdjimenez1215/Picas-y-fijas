@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: picas-y-fijas
+  namespace: picas-y-fijas
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: picas-y-fijas
+  template:
+    metadata:
+      labels:
+        app: picas-y-fijas
+    spec:
+      containers:
+        - name: web
+          image: picas-y-fijas:1.0
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "128Mi"
+          ports:
+            - name: http
+              containerPort: 5000
+          env:
+            - name: PICAS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: picas-auth
+                  key: signing-key
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
