@@ -15,10 +15,34 @@ spec:
       labels:
         app: picas-y-fijas
     spec:
+      volumes:
+        - name: source
+          emptyDir: {}
+      initContainers:
+        - name: download-code
+          image: alpine/git:latest
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              git init /source/repo
+              git -C /source/repo fetch --depth=1 https://github.com/jdjimenez1215/Picas-y-fijas.git HEAD
+              git -C /source/repo reset --hard FETCH_HEAD
+          volumeMounts:
+            - name: source
+              mountPath: /source
       containers:
         - name: web
-          image: picas-y-fijas:1.0
+          image: python:3.12-slim
           imagePullPolicy: IfNotPresent
+          workingDir: /source/repo
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              pip install --no-cache-dir -r requirements.txt gunicorn==23.0.0
+              exec gunicorn --bind 0.0.0.0:5000 --workers 1 run:app
+          volumeMounts:
+            - name: source
+              mountPath: /source
           resources:
             requests:
               cpu: "250m"
