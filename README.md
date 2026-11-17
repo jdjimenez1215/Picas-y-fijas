@@ -12,7 +12,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m run
 ```
 
-Abre `http://localhost:5000` en dos pestañas. Entra como `ana` y `luis`, crea una partida y une al segundo jugador. Utiliza **Actualizar partida** para consultar el turno y las jugadas del rival. Al terminar se muestra el ganador y puedes volver a la sala. **Cerrar sesión** permite ingresar con otro nombre.
+Abre `http://localhost:5000` en dos pestañas. Entra como `ana` y `luis`, crea una partida y une al segundo jugador. El listado de partidas y la partida se actualizan automáticamente cada pocos segundos, así que no hace falta pulsar ningún botón para ver nuevas partidas, el turno o las jugadas del rival. Al terminar se muestra el ganador y puedes volver a la sala. **Cerrar sesión** permite ingresar con otro nombre.
 
 Para detener el servidor pulsa `Ctrl+C`. Para volver a iniciarlo basta con el último comando. El servidor local utiliza el modo de desarrollo y recarga al guardar cambios.
 
@@ -36,7 +36,7 @@ Envía los cuerpos JSON con `Content-Type: application/json`. Todas las operacio
 | GET | `/juego/{id}` | — | 200, estado completo para participantes |
 | GET | `/juego` | — | 200, resumen de todas las partidas |
 
-`number` es texto para conservar ceros iniciales. Debe contener exactamente cuatro dígitos ASCII diferentes. El usuario del cuerpo de la petición para unirse debe coincidir con el del token. El resultado de jugar contiene `player`, `guess`, `fijas` y `picas`. Consulta después `GET /juego/{id}` para obtener el turno, el estado y el ganador.
+`number` es texto para conservar ceros iniciales. Debe contener exactamente cuatro dígitos ASCII diferentes. El identificador de cada partida (`id`) es un número de seis dígitos distintos, generado al azar y único. El usuario del cuerpo de la petición para unirse debe coincidir con el del token. El resultado de jugar contiene `player`, `guess`, `fijas` y `picas`. Consulta después `GET /juego/{id}` para obtener el turno, el estado y el ganador.
 
 Los estados son `waiting`, `in_progress` y `finished`. Los errores se devuelven como JSON con `error`. Los códigos principales son 400 para entradas o transiciones inválidas, 401 para token ausente, inválido o vencido, 403 para acceso o turno denegados, 404 para una partida inexistente, 405 para un método HTTP no admitido y 415 para un cuerpo enviado con tipo de contenido incorrecto.
 

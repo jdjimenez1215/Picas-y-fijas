@@ -1,4 +1,4 @@
-import uuid
+import secrets
 from typing import List
 
 from app.domain.game import Game
@@ -13,10 +13,28 @@ class GameService:
 
     def create_game(self, creator: str, secret: str) -> Game:
         """Crea una partida con el secreto del primer jugador."""
-        game_id = str(uuid.uuid4())
-        game = Game(id=game_id, secret=secret, creator=creator)
+        game = Game(id=self._new_game_id(), secret=secret, creator=creator)
         self.game_repo.save(game)
         return game
+
+    def _new_game_id(self) -> str:
+        """Genera un id numérico de 6 dígitos distintos, único entre las partidas."""
+        used = {game.id for game in self.game_repo.find_all()}
+        # 9 * 9 * 8 * 7 * 6 * 5 = 136080 combinaciones posibles.
+        if len(used) >= 136_080:
+            raise RuntimeError("No quedan identificadores de partida disponibles")
+        while True:
+            game_id = self._candidate_game_id()
+            if game_id not in used:
+                return game_id
+
+    @staticmethod
+    def _candidate_game_id() -> str:
+        """Número de 6 dígitos aleatorios, distintos y sin ceros a la izquierda."""
+        first = secrets.choice("123456789")
+        pool = [digit for digit in "0123456789" if digit != first]
+        rest = [pool.pop(secrets.randbelow(len(pool))) for _ in range(5)]
+        return first + "".join(rest)
 
     def join_game(self, game_id: str, player: str, secret: str) -> Game:
         """Une un jugador a la partida. Lanza NotFoundError si no existe."""
