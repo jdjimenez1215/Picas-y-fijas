@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, render_template
+from flask import Flask, redirect, render_template, request, url_for
 from werkzeug.exceptions import HTTPException
 
 from app.repositories.memory_game_repository import MemoryGameRepository
@@ -43,6 +43,21 @@ def create_app(secret_key: str | None = None) -> Flask:
     @app.get("/")
     def index():
         return render_template("index.html")
+
+    @app.before_request
+    def redirect_game_page():
+        if request.method != "GET" or request.endpoint not in {"game.list_games", "game.get_game"}:
+            return
+        if request.headers.get("Authorization"):
+            return
+        if request.accept_mimetypes.best_match(["application/json", "text/html"]) != "text/html":
+            return
+
+        game_id = request.view_args.get("game_id")
+        fragment = f"/partidas/{game_id}" if game_id else "/partidas"
+        response = redirect(url_for("index", _anchor=fragment))
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     # ---------- Errores de DOMINIO -> HTTP ----------
     @app.errorhandler(NotFoundError)

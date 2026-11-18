@@ -83,7 +83,7 @@
   let token = "", username = "", current = null, busy = false, timer = null;
   let lobbyTimer = null, lobbyLoading = false, lastGames = "";
   const path = id => "/juego/" + encodeURIComponent(id);
-  const routeId = () => location.hash.startsWith("#/partidas/") ? decodeURIComponent(location.hash.slice(11)) : "";
+  const sessionKey = "picas-y-fijas-session";
 
   async function api(url, method = "GET", body) {
     const headers = {};
@@ -91,7 +91,10 @@
     if (token) headers.Authorization = "Bearer " + token;
     const response = await fetch(url, {method, headers, body: JSON.stringify(body)});
     const data = await response.json();
-    if (!response.ok) throw new Error(data.description || data.error);
+    if (!response.ok) {
+      if (response.status === 401 && token) logout();
+      throw new Error(data.description || data.error);
+    }
     return data;
   }
 
@@ -109,9 +112,9 @@
 
   function navigate(id = "") {
     const hash = id ? "#/partidas/" + encodeURIComponent(id) : "#/partidas";
-    history.pushState(null, "", hash);
+    if (location.hash !== hash) history.pushState(null, "", hash);
   }
-
+  
   function stopPolling() {
     if (timer) { clearInterval(timer); timer = null; }
   }
@@ -196,7 +199,7 @@
     const title = document.createElement("h3");
     title.textContent = states[game.status] + " · #" + game.id;
     const info = document.createElement("p");
-    info.textContent = "Creada por " + game.creator + " · " + game.players.length + "/2 jugadores"
+    info.textContent = game.players.length + "/2 jugadores: " + game.players.join(", ")
       + (game.winner ? " · Ganó " + game.winner : "");
     const button = document.createElement("button");
     const member = game.players.includes(username);
@@ -277,25 +280,26 @@
     el("join").hidden = false;
     el("play").hidden = true;
     el("attempts").replaceChildren();
-    history.pushState(null, "", "#/unirme/" + encodeURIComponent(game.id));
+    const hash = "#/unirme/" + encodeURIComponent(game.id);
+    if (location.hash !== hash) history.pushState(null, "", hash);
     el("round-title").focus();
     window.scrollTo({top: 0, behavior: "smooth"});
   }
 
-  action("login", "submit", async () => {
-    const name = el("username").value.trim();
-    const session = await api("/login", "POST", {username: name});
-    token = session.token; username = name;
+  function showSession(session) {
+    token = session.token;
+    username = session.username;
     el("session").textContent = "Jugando como " + username;
     el("login").hidden = true;
     el("logout").hidden = false;
     el("games").hidden = false;
-    await lobby();
-  });
-  action("logout", "click", () => {
+  }
+
+  function logout() {
     stopPolling();
     stopLobbyPolling();
     token = ""; username = ""; current = null; lastGames = "";
+    sessionStorage.removeItem(sessionKey);
     el("session").textContent = "";
     el("games").hidden = true;
     el("round").hidden = true;
@@ -308,7 +312,17 @@
     history.replaceState(null, "", location.pathname + location.search);
     el("message").textContent = "Sesión cerrada.";
     el("username").focus();
+  }
+
+  action("login", "submit", async () => {
+    const name = el("username").value.trim();
+    const {token: signedToken} = await api("/login", "POST", {username: name});
+    const session = {token: signedToken, username: name};
+    sessionStorage.setItem(sessionKey, JSON.stringify(session));
+    showSession(session);
+    await restoreView();
   });
+  action("logout", "click", logout);
   action("create", "submit", async () => {
     const game = await api("/juego", "POST", {number: el("create-number").value});
     el("create").reset(); navigate(game.id); show(game);
@@ -326,11 +340,38 @@
       : result.fijas + " fijas y " + result.picas + " picas.";
   });
   action("back", "click", lobby);
+  async function restoreView() {
+    const [, view, id] = location.hash.split("/");
+    if (id && (view === "partidas" || view === "unirme")) {
+      try {
+        if (view === "partidas") await openGame(decodeURIComponent(id));
+        else await showInvitation({id: decodeURIComponent(id)});
+        return;
+      } catch (error) {
+        if (token) await lobby();
+        el("message").textContent = error.message;
+        return;
+      }
+    }
+    await lobby();
+  }
+
+  async function restoreSession() {
+    const saved = sessionStorage.getItem(sessionKey);
+    if (!saved) return;
+    showSession(JSON.parse(saved));
+    await restoreView();
+  }
+
   window.addEventListener("popstate", async () => {
     if (!token || busy) return;
-    try { const id = routeId(); if (id) await openGame(id); else await lobby(); }
+    try { await restoreView(); }
     catch (error) { el("message").textContent = error.message; }
   });
+  busy = true;
+  restoreSession()
+    .catch(error => { el("message").textContent = error.message; })
+    .finally(() => { busy = false; });
 </script>
 </body>
 </html>

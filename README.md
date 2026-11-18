@@ -20,7 +20,33 @@ En Linux o macOS utiliza `.venv/bin/python` en lugar de `.\.venv\Scripts\python.
 
 ## Ejecutar en Killercoda
 
-Sigue [la guía de Killercoda](killercoda/KILLERCODA.md) desde `root@controlplane`. Kubernetes descarga el repositorio público y ejecuta la aplicación con las imágenes `alpine/git` y `python`. El despliegue utiliza los tres archivos YAML de `killercoda`.
+Abre el Playground de Kubernetes y pega este bloque completo en la terminal `root@controlplane`. Si ya tienes un reenvío de puerto activo, detenlo con `Ctrl+C` primero.
+
+```bash
+(
+set -e
+cd /root
+if [ -d Picas-y-fijas/.git ]; then
+  git -C Picas-y-fijas pull --ff-only
+else
+  git clone https://github.com/jdjimenez1215/Picas-y-fijas.git
+fi
+cd Picas-y-fijas
+
+kubectl apply -f killercoda/namespace.yaml
+if ! kubectl -n picas-y-fijas get secret picas-auth >/dev/null 2>&1; then
+  kubectl -n picas-y-fijas create secret generic picas-auth --from-literal=signing-key="$(openssl rand -hex 32)"
+fi
+
+kubectl apply -f killercoda/deployment.yaml
+kubectl apply -f killercoda/service.yaml
+kubectl -n picas-y-fijas rollout restart deployment/picas-y-fijas
+kubectl -n picas-y-fijas rollout status deployment/picas-y-fijas --timeout=300s
+kubectl -n picas-y-fijas port-forward --address 0.0.0.0 service/picas-y-fijas 8080:80
+)
+```
+
+Cuando veas `Forwarding from 0.0.0.0:8080`, deja la terminal abierta y entra por **Traffic / Ports → 8080**. El reinicio carga el código publicado en GitHub y borra las partidas anteriores. Para revisar fallos, consulta [la guía de Killercoda](killercoda/KILLERCODA.md#diagnóstico).
 
 ## API
 
