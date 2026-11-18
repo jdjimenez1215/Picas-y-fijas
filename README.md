@@ -20,33 +20,18 @@ En Linux o macOS utiliza `.venv/bin/python` en lugar de `.\.venv\Scripts\python.
 
 ## Ejecutar en Killercoda
 
-Abre el Playground de Kubernetes y pega este bloque completo en la terminal `root@controlplane`. Si ya tienes un reenvío de puerto activo, detenlo con `Ctrl+C` primero.
+Abre el Playground de Kubernetes y ejecuta estos comandos **en orden** en la terminal `root@controlplane`. Si tienes un reenvío activo, deténlo con `Ctrl+C` primero.
 
 ```bash
-(
-set -e
-cd /root
-if [ -d Picas-y-fijas/.git ]; then
-  git -C Picas-y-fijas pull --ff-only
-else
-  git clone https://github.com/jdjimenez1215/Picas-y-fijas.git
-fi
+git clone https://github.com/jdjimenez1215/Picas-y-fijas.git
 cd Picas-y-fijas
-
 kubectl apply -f killercoda/namespace.yaml
-if ! kubectl -n picas-y-fijas get secret picas-auth >/dev/null 2>&1; then
-  kubectl -n picas-y-fijas create secret generic picas-auth --from-literal=signing-key="$(openssl rand -hex 32)"
-fi
-
-kubectl apply -f killercoda/deployment.yaml
-kubectl apply -f killercoda/service.yaml
-kubectl -n picas-y-fijas rollout restart deployment/picas-y-fijas
+kubectl apply -f killercoda/
 kubectl -n picas-y-fijas rollout status deployment/picas-y-fijas --timeout=300s
 kubectl -n picas-y-fijas port-forward --address 0.0.0.0 service/picas-y-fijas 8080:80
-)
 ```
 
-Cuando veas `Forwarding from 0.0.0.0:8080`, deja la terminal abierta y entra por **Traffic / Ports → 8080**. El reinicio carga el código publicado en GitHub y borra las partidas anteriores. Para revisar fallos, consulta [la guía de Killercoda](killercoda/KILLERCODA.md#diagnóstico).
+Cuando veas `Forwarding from 0.0.0.0:8080`, deja la terminal abierta y entra por **Traffic / Ports → 8080**. No hace falta crear el Secret `picas-auth`: si no hay `PICAS_SECRET_KEY`, la app genera una clave al arrancar. Para revisar fallos, consulta [la guía de Killercoda](killercoda/KILLERCODA.md#diagnóstico).
 
 ## API
 
@@ -80,5 +65,7 @@ El entorno `.venv/` y las cachés se generan localmente y están excluidos por `
 - `app/routes` expone las operaciones HTTP y verifica los tokens.
 - `app/templates/index.html` contiene la interfaz y las peticiones del navegador.
 - `app/__init__.py` crea Flask, conecta servicios y registra las rutas y errores.
+
+En `docs/` hay material de apoyo para el corte: [código explicado archivo por archivo](docs/04_codigo_explicado.md), [teoría de API, Docker, RPC y Kubernetes](docs/01_teoria_api_docker_rpc_kubernetes.md), [apunte de ejercicios](docs/02_apunte_parcial.md) y [guion de sustentación](docs/03_sustentacion_proyecto.md).
 
 El almacenamiento vive en la memoria de un proceso. Reiniciarlo borra usuarios y partidas. Se utiliza una réplica y un worker para compartir ese estado entre los jugadores. El login identifica por nombre y genera tokens firmados con una vigencia de una hora. Cerrar sesión elimina el token de la pestaña. Un token ya copiado mantiene su validez hasta vencer o cambiar la clave de firma.
